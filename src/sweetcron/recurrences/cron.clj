@@ -16,28 +16,53 @@
     set-fn     - fn to update dt with explicit new value of time unit
     carry-unit - on overflow, increment dt by 1 of this unit function"
   [dt value get-fn set-fn carry-unit]
-  (if (= value :*)
-    dt
+  (let [proposed (-> dt (set-fn value) (t/floor t/minute))]
     (cond-> dt
-      (< value (get-fn dt)) (t/plus (-> 1 carry-unit))
-      true                  (set-fn value))))
+      (not (t/after? proposed dt)) (t/plus (-> 1 carry-unit))
+      true                         (set-fn value))))
+
+(defn zero-components
+  "Set the requested components to zero, after a roll-over"
+  [^DateTime dt & components]
+  (let [should-zero? (set components)]
+    (cond-> dt
+      (should-zero? :day)    (.withDayOfMonth 1)
+      (should-zero? :hour)   (.withHourOfDay 0)
+      (should-zero? :minute) (.withMinuteOfHour 0))))
 
 (defn advance-month
   "Update the month component of given date time, if the month
   parameter is a static value."
   [dt month]
-  (roll-forward dt month t/month (memfn withMonthOfYear m) t/years))
+  (if (= month :*)
+    dt
+    (-> dt
+        (roll-forward month t/month (memfn withMonthOfYear m) t/years)
+        (zero-components :day :hour :minute))))
 
 (defn advance-day-of-month
   "Update the day component according to a day-of-month constraint"
   [dt day-of-month]
-  (roll-forward dt day-of-month t/day (memfn withDayOfMonth d) t/months))
+  (if (= day-of-month :*)
+    dt
+    (-> dt
+        (roll-forward day-of-month t/day (memfn withDayOfMonth d) t/months)
+        (zero-components :hour :minute))))
+
+(defn cron-dow->joda-dow
+  "Mapping from cron (0-7) to Joda (1-7) day-of-week numbers"
+  [cron-dow]
+  (if (zero? cron-dow) 7 cron-dow))
 
 (defn advance-day-of-week
   "Update the day component according to a day-of-week constraint"
   [dt day-of-week]
-  (let [joda-dow (min (inc day-of-week) 7)]
-    (roll-forward dt joda-dow t/day-of-week (memfn withDayOfWeek d) t/weeks)))
+  (if (= day-of-week :*)
+    dt
+    (let [joda-dow (cron-dow->joda-dow day-of-week)]
+      (-> dt
+          (roll-forward joda-dow t/day-of-week (memfn withDayOfWeek d) t/weeks)
+          (zero-components :hour :minute)))))
 
 (defn advance-day
   "Update the day component to the next most recent of either the
@@ -56,7 +81,11 @@
 (defn advance-hour
   "Update the hour component according to the given constraint"
   [dt hour]
-  (roll-forward dt hour t/hour (memfn withHourOfDay hour) t/days))
+  (if (= hour :*)
+    dt
+    (-> dt
+        (roll-forward hour t/hour (memfn withHourOfDay hour) t/days)
+        (zero-components :minute))))
 
 (defn advance-minute
   "Update the minute component according to the given constraint."
@@ -69,11 +98,11 @@
   r/Recurrence
   (time-of-next [r t-now]
     (-> t-now
-        (t/floor t/minute)
         (advance-month month)
         (advance-day day-of-month day-of-week)
         (advance-hour hour)
-        (advance-minute minute))))
+        (advance-minute minute)
+        (t/floor t/minute))))
 
 (defn numeric?
   "Tests if the given string has numeric only content"
