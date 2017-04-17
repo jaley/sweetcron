@@ -61,3 +61,31 @@
  (inst "2017-04-16 00:10:00")
  (t-next (inst "2017-04-16 00:01:00") "10 0 * * 0"))
 
+(expect
+ (inst "2017-04-23 00:10:00")
+ (t-next (inst "2017-04-16 00:11:00") "10 0 * * 0"))
+
+;; every month
+(expect
+ (inst "2017-04-17 03:15:00")
+ (t-next (inst "2017-04-16 17:00:00") "15 3 17 * *"))
+
+(expect
+ (inst "2017-05-17 03:15:00")
+ (t-next (inst "2017-04-17 04:00:00") "15 3 17 * *"))
+
+;; TODO: This test will currently fail, as the algorithm doesn't exactly
+;; match cron behaviour for cases where both day-of-month and day-of-week
+;; are set. See issue #1
+;; (expect
+;;  (inst "2017-04-23 03:15:00")
+;;  (t-next (inst "2017-04-17 04:00:00") "15 3 17 * 0"))
+
+;; annually
+(expect
+ (inst "2017-02-01 10:30:00")
+ (t-next (inst "2017-01-16 14:00:00") "30 10 1 2 *"))
+
+(expect
+ (inst "2018-02-01 10:30:00")
+ (t-next (inst "2017-02-02 14:00:00") "30 10 1 2 *"))
