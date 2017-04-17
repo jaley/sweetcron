@@ -28,7 +28,9 @@
  (inst "2017-01-01 00:01:00")
  (t-next (inst "2017-01-01 00:00:00") "* * * * *"))
 
-;; todo: add partial minute test
+(expect
+ (inst "2017-01-01 00:01:00")
+ (t-next (inst "2017-01-01 00:00:59") "* * * * *"))
 
 ;; every hour
 (expect
@@ -58,3 +60,4 @@
 (expect
  (inst "2017-04-16 00:10:00")
  (t-next (inst "2017-04-16 00:01:00") "10 0 * * 0"))
+
